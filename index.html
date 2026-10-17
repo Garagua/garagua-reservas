@@ -136,7 +136,7 @@ async function createGaraguaAdmin(event){
     const response=await fetch(SUPABASE_URL+'/functions/v1/garagua-admin',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({nombre,email,password})
+      body:JSON.stringify({accion:'crear',nombre,email,password})
     });
     const result=await response.json().catch(()=>({}));
     if(!response.ok||result.correcto===false)throw new Error(result.error||result.mensaje||'No se pudo crear el administrador');
