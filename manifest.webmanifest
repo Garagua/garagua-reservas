@@ -1,0 +1,25 @@
+{
+  "name": "Club Garagua",
+  "short_name": "Club Garagua",
+  "description": "Entrenamientos y reservas del Club de Natación Garagua",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eaf7fc",
+  "theme_color": "#087cae",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
