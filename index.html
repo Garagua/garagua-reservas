@@ -119,7 +119,32 @@ async function assignSwimmerPin(id){
   }catch(err){message(err);}
 }
 async function toggleSwimmer(id,activo){if(confirm(`¿${activo?'Activar':'Desactivar'} este nadador?`))await mutate(api.from('nadadores').update({activo}).eq('id',id));}
-function renderAdmins(){return `<div class="card"><h2>Administradores</h2><p class="muted">Las cuentas se crean de forma segura desde Supabase Authentication y se autorizan en la tabla administradores. La creación desde esta web se habilitará más adelante.</p></div>${admins.map(a=>`<div class="card"><strong>${esc(a.nombre)}</strong><p class="muted">${a.activo?'Activo':'Inactivo'}</p></div>`).join('')}`;}
+function renderAdmins(){return `<div class="card"><h2>Administradores</h2><p class="muted">Crea cuentas con correo y contraseña. Solo los administradores autorizados pueden utilizar este formulario.</p><form onsubmit="createGaraguaAdmin(event)"><label>Nombre del nuevo administrador</label><input id="newAdminName" maxlength="100" autocomplete="off" required><label>Correo electrónico</label><input id="newAdminEmail" type="email" autocomplete="off" required><label>Contraseña (mínimo 12 caracteres)</label><input id="newAdminPassword" type="password" minlength="12" autocomplete="new-password" required><button class="primary full" type="submit">Crear administrador</button></form></div>${admins.map(a=>`<div class="card"><strong>${esc(a.nombre)}</strong><p class="muted">${a.activo?'Activo':'Inactivo'}</p></div>`).join('')}`;}
+async function createGaraguaAdmin(event){
+  event.preventDefault();
+  const form=event.currentTarget;
+  const button=form.querySelector('button[type="submit"]');
+  const nombre=$('newAdminName').value.trim();
+  const email=$('newAdminEmail').value.trim().toLowerCase();
+  const password=$('newAdminPassword').value;
+  if(!nombre||!email||password.length<12){alert('Revisa el nombre, correo y contraseña (mínimo 12 caracteres).');return;}
+  if(!confirm('¿Crear la cuenta de administrador para '+email+'?'))return;
+  button.disabled=true;
+  try{
+    const {data:{session},error:sessionError}=await api.auth.getSession();
+    if(sessionError||!session?.access_token)throw new Error('La sesión de administrador ha caducado. Vuelve a entrar.');
+    const response=await fetch(SUPABASE_URL+'/functions/v1/garagua-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({nombre,email,password})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||result.correcto===false)throw new Error(result.error||result.mensaje||'No se pudo crear el administrador');
+    form.reset();
+    await reload();
+    alert(result.mensaje||'Administrador creado correctamente.');
+  }catch(error){message(error);button.disabled=false;}
+}
 async function mutate(request){try{const {error}=await request;if(error)throw error;await reload();}catch(err){message(err);}}
 api.auth.getUser().then(({data})=>{
   if(data?.user)initialize();
