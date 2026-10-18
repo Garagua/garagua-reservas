@@ -102,19 +102,36 @@ function renderClasses(){return `<div class="card"><h2>Crear entrenamiento</h2><
 async function addClass(e){e.preventDefault();await mutate(api.from('entrenamientos').insert({titulo:'Entrenamiento de natación',fecha:$('date').value,hora:$('time').value,duracion_minutos:Number($('duration').value),plazas_maximas:Number($('capacity').value),planificacion:$('plan').value,publicado:$('published').checked}));}
 async function toggleClass(id,published){await mutate(api.from('entrenamientos').update({publicado:published}).eq('id',id));}
 async function publishAll(){const ids=classes.filter(c=>!c.publicado).map(c=>c.id);if(!ids.length)return alert('No hay entrenamientos pendientes.');await mutate(api.from('entrenamientos').update({publicado:true}).in('id',ids));}
-function editPlanText(value){
- return new Promise(resolve=>{
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:#0b243c99;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
-  overlay.innerHTML=`<div style="background:white;border-radius:18px;padding:20px;width:min(650px,100%);max-height:92vh;overflow:auto"><h3 style="margin-top:0">Editar planificación</h3><p class="muted">Pulsa Intro para separar líneas. Deja una línea en blanco entre bloques.</p><textarea id="planEditText" style="height:48vh;min-height:230px;white-space:pre-wrap"></textarea><div class="row"><button type="button" class="secondary" id="planEditCancel">Cancelar</button><button type="button" class="primary" id="planEditSave">Guardar planificación</button></div></div>`;
-  document.body.appendChild(overlay);
-  const field=overlay.querySelector('#planEditText');field.value=value;field.focus();
-  function close(v){overlay.remove();resolve(v)}
-  overlay.querySelector('#planEditCancel').onclick=()=>close(null);
-  overlay.querySelector('#planEditSave').onclick=()=>close(field.value);
- });
+async function editClass(id){
+ const c=classes.find(x=>x.id===id);if(!c)return;
+ const overlay=document.createElement('div');
+ overlay.style.cssText='position:fixed;inset:0;background:#0b243c99;z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px';
+ overlay.innerHTML=`<div role="dialog" aria-modal="true" aria-label="Editar entrenamiento" style="background:white;border-radius:18px;padding:20px;width:min(680px,100%);max-height:94vh;overflow:auto">
+ <h2 style="margin:0 0 12px">Editar entrenamiento</h2>
+ <div class="grid"><div><label for="editFecha">Fecha</label><input id="editFecha" type="date" required></div><div><label for="editHora">Hora</label><input id="editHora" type="time" required></div></div>
+ <label for="editPlazas">Plazas máximas</label><input id="editPlazas" type="number" min="1" max="100" required>
+ <label for="editPlan">Planificación del entrenamiento</label>
+ <p class="muted" style="margin:6px 0">Escribe en varias líneas y deja una línea en blanco entre bloques. Se respetarán al visualizarla.</p>
+ <textarea id="editPlan" style="height:43vh;min-height:240px;white-space:pre-wrap" placeholder="CALENTAMIENTO\n\nTÉCNICA\n\nSERIE PRINCIPAL\n\nVUELTA A LA CALMA"></textarea>
+ <div class="row" style="justify-content:flex-end;flex-wrap:wrap"><button type="button" class="secondary" id="editCancelar">Cancelar</button><button type="button" class="primary" id="editGuardar">Guardar cambios</button></div>
+ </div>`;
+ document.body.appendChild(overlay);
+ const get=id=>overlay.querySelector('#'+id);
+ get('editFecha').value=c.fecha;
+ get('editHora').value=c.hora.slice(0,5);
+ get('editPlazas').value=c.plazas_maximas;
+ get('editPlan').value=c.planificacion||'';
+ get('editCancelar').onclick=()=>overlay.remove();
+ get('editGuardar').onclick=async()=>{
+  const fecha=get('editFecha').value,hora=get('editHora').value,plazas=Number(get('editPlazas').value),planificacion=get('editPlan').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||!/^([01]\d|2[0-3]):[0-5]$/.test(hora))return alert('Comprueba la fecha y la hora.');
+  if(!Number.isInteger(plazas)||plazas<Math.max(1,count(id))||plazas>100)return alert('Revisa las plazas: no pueden ser inferiores a los inscritos ni superiores a 100.');
+  const btn=get('editGuardar');btn.disabled=true;
+  try{await mutate(api.from('entrenamientos').update({fecha,hora,plazas_maximas:plazas,planificacion}).eq('id',id));overlay.remove();}
+  catch(e){btn.disabled=false;alert('No se pudieron guardar los cambios. Inténtalo de nuevo.');}
+ };
+ get('editPlan').focus();
 }
-async function editClass(id){let c=classes.find(x=>x.id===id);if(!c)return;let fecha=prompt('Fecha (AAAA-MM-DD)',c.fecha);if(fecha===null)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||isNaN(Date.parse(fecha)))return alert('Fecha incorrecta');let hora=prompt('Hora (HH:MM)',c.hora.slice(0,5));if(hora===null)return;if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora))return alert('Hora incorrecta');let planificacion=await editPlanText(c.planificacion||'');if(planificacion===null)return;let plazas=prompt('Plazas máximas',c.plazas_maximas);if(plazas===null)return;plazas=Number(plazas);if(!Number.isInteger(plazas)||plazas<Math.max(1,count(id)))return alert('El límite no puede ser inferior a los inscritos.');await mutate(api.from('entrenamientos').update({fecha,hora,plazas_maximas:plazas,planificacion}).eq('id',id));}
 async function deleteClass(id){if(confirm('¿Eliminar el entrenamiento y sus reservas?'))await mutate(api.from('entrenamientos').delete().eq('id',id));}
 async function removeBooking(id){if(confirm('¿Eliminar esta reserva?'))await mutate(api.from('reservas').delete().eq('id',id));}
 function renderSwimmers(){return `<div class="card"><h2>Dar de alta nadador</h2><p class="notice">Puedes dar de alta nadadores y asignarles un PIN de cuatro cifras. El PIN permite a los nadadores acceder a sus entrenamientos.</p><form onsubmit="addSwimmer(event)"><label>Nombre completo</label><input id="swimmerName" required><button class="primary full">Añadir nadador</button></form></div><h2>Nadadores (${swimmers.length})</h2>${swimmers.map(n=>`<div class="card row"><div><strong>${esc(n.nombre)}</strong><p class="muted">${bookings.filter(b=>b.nadador_id===n.id).length} reservas · ${n.activo?'Activo':'Inactivo'}</p></div><button class="${n.activo?'danger':'secondary'}" onclick="toggleSwimmer('${n.id}',${!n.activo})">${n.activo?'Desactivar':'Activar'}</button><button class="secondary" onclick="assignSwimmerPin('${n.id}')">Asignar PIN</button><button class="danger" onclick="deleteSwimmer('${n.id}')">Eliminar</button></div>`).join('')}`;}
