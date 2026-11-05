@@ -127,7 +127,7 @@ async function editClass(id){
  get('editCancelar').onclick=()=>overlay.remove();
  get('editGuardar').onclick=async()=>{
   const fecha=get('editFecha').value,hora=get('editHora').value,plazas=Number(get('editPlazas').value),planificacion=get('editPlan').value;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||!/^([01]\d|2[0-3]):[0-5]$/.test(hora))return alert('Comprueba la fecha y la hora.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora))return alert('Comprueba la fecha y la hora.');
   if(!Number.isInteger(plazas)||plazas<Math.max(1,count(id))||plazas>100)return alert('Revisa las plazas: no pueden ser inferiores a los inscritos ni superiores a 100.');
   const btn=get('editGuardar');btn.disabled=true;
   try{await mutate(api.from('entrenamientos').update({fecha,hora,plazas_maximas:plazas,planificacion}).eq('id',id));overlay.remove();}
